@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Бронювання — Показ тіней</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+<div id="header"></div>
+<main class="wrap" id="content"><p class="msg">Завантаження…</p></main>
+<div id="footer"></div>
+
+<script src="app.js"></script>
+<script>
+header("films"); footer();
+
+const $ = id => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const ROWS = ["A", "B", "C", "D", "E"], VIP_ROWS = ["E"];   // останній ряд VIP, ціна ×1.5
+const selected = new Set();
+let movie, sessions = [], session, taken = new Set();
+
+const isVip = code => VIP_ROWS.includes(code[0]);
+const seatPrice = code => isVip(code) ? Math.round(session.price * 1.5) : Number(session.price);
+const box = $("content");
+
+(async () => {
+  try {
+    const sid = Number(qs.get("session")), mid = Number(qs.get("movie"));
+    const all = await api("/sessions");
+    const picked = sid ? all.find(s => s.id === sid) : null;
+    const movieId = picked ? picked.movieId : mid;
+    if (!movieId) { location.replace("catalog.html"); return; }
+
+    movie = await api("/movies/" + movieId);
+    sessions = all.filter(s => s.movieId === movieId && new Date(s.startTime) > new Date())
+                  .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    if (!sessions.length) {
+      box.innerHTML = `<p class="msg">Для цього фільму поки немає сеансів. <a href="catalog.html" style="text-decoration:underline">До каталогу</a></p>`;
+      return;
+    }
+    session = sessions.find(s => s.id === sid) || sessions[0];
+    draw();
+    fillDates();
+    await loadSession(session);
+  } catch (e) { showError(box, e); }
+})();
+
+function draw() {
+  box.innerHTML = `
+    <div class="bk">
+      <div>
+        <h1>${esc(movie.title)}</h1>
+        <div class="metaline">
+          <span class="tag">${esc(movie.genre)}</span><span>${durText(movie.durationMinutes)}</span>
+          ${movie.rating != null ? `<span class="star">★ ${esc(movie.rating)}</span>` : ""}
+        </div>
+        <p class="clamp">${esc(movie.description)}</p>
+
+        <div class="panel">
+          <h3>Оберіть параметри</h3>
+          <div class="params">
+            <label>Дата<select id="dsel"></select></label>
+            <label>Час<select id="tsel"></select></label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Оберіть місця</h3>
+          <div class="screen"></div><div class="scr-l">ЕКРАН</div>
+          <div id="seats"></div>
+          <div class="legend">
+            <span><i class="sw" style="background:#555"></i>Вільне</span>
+            <span><i class="sw" style="background:#000;border-color:#fff"></i>Зайняте</span>
+            <span><i class="sw" style="background:#9b0000"></i>VIP</span>
+            <span><i class="sw" style="background:#ff4d6d;border-color:#fff"></i>Обране</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel sum">
+        <h3>Підсумок бронювання</h3>
+        <dl>
+          <dt>Фільм:</dt><dd id="s-film"></dd>
+          <dt>Дата:</dt><dd id="s-date"></dd>
+          <dt>Час:</dt><dd id="s-time"></dd>
+          <dt>Локація:</dt><dd id="s-loc"></dd>
+          <dt>Місця:</dt><dd id="s-seats"></dd>
+          <dt>Тип квитка:</dt><dd id="s-type"></dd>
+        </dl>
+        <div class="total"><span>Всього:</span><b id="s-total"></b></div>
+        <button class="btn" id="buy" disabled>${USER_ID ? "Підтвердити бронювання" : "Увійти й забронювати"}</button>
+        <small>Натиснувши кнопку, ви погоджуєтесь з умовами бронювання</small>
+      </aside>
+    </div>`;
+
+  $("dsel").onchange = () => {
+    session = sessions.find(s => dayKey(s.startTime) === $("dsel").value);
+    fillTimes();
+    loadSession(session);
+  };
+  $("tsel").onchange = () => loadSession(sessions.find(s => s.id === Number($("tsel").value)));
+
+  $("seats").onclick = e => {
+    const b = e.target.closest(".seat");
+    if (!b || b.disabled) return;
+    const code = b.dataset.s;
+    selected.has(code) ? selected.delete(code) : selected.add(code);
+    renderSeats();
+    updateSummary();
+  };
+
+  $("buy").onclick = async () => {
+    if (!USER_ID) {
+      location.href = "login.html?next=" + encodeURIComponent("booking.html?session=" + session.id);
+      return;
+    }
+    $("buy").disabled = true;
+    try {
+      for (const seat of selected) {
+        await api("/tickets", { method: "POST", body: JSON.stringify({ sessionId: session.id, userId: USER_ID, seatNumber: seat }) });
+      }
+      toast("Бронювання підтверджено");
+      setTimeout(() => location.href = "tickets.html", 900);
+    } catch (err) {
+      toast(err.detail || "Не вдалося забронювати");
+      await loadSession(session);
+    }
+  };
+}
+
+function fillDates() {
+  const today = dayKey(new Date());
+  const days = [...new Set(sessions.map(s => dayKey(s.startTime)))];
+  $("dsel").innerHTML = days.map(d => {
+    const s = sessions.find(x => dayKey(x.startTime) === d);
+    return `<option value="${d}" ${d === dayKey(session.startTime) ? "selected" : ""}>${d === today ? "Сьогодні, " : ""}${fmtDate(s.startTime)}</option>`;
+  }).join("");
+  fillTimes();
+}
+
+function fillTimes() {
+  const list = sessions.filter(s => dayKey(s.startTime) === $("dsel").value);
+  $("tsel").innerHTML = list.map(s =>
+    `<option value="${s.id}" ${s.id === session.id ? "selected" : ""}>${fmtTime(s.startTime)}${s.location ? " · " + esc(s.location) : ""}${s.hall ? " · " + esc(s.hall) : ""}</option>`
+  ).join("");
+}
+
+async function loadSession(s) {
+  session = s;
+  selected.clear();
+  taken = new Set();
+  try {
+    const tickets = await api("/tickets");
+    tickets.filter(t => t.sessionId === s.id && !isCancelled(t.status)).forEach(t => taken.add(t.seatNumber));
+  } catch {}
+  renderSeats();
+  updateSummary();
+}
+
+function renderSeats() {
+  const seat = r => i => {
+    const code = r + i;
+    const cls = ["seat", VIP_ROWS.includes(r) ? "vip" : "", taken.has(code) ? "taken" : "", selected.has(code) ? "sel" : ""].join(" ");
+    return `<button class="${cls}" data-s="${code}" ${taken.has(code) ? "disabled" : ""}
+      aria-pressed="${selected.has(code)}" aria-label="Місце ${code}${VIP_ROWS.includes(r) ? ", VIP" : ""}">${i}</button>`;
+  };
+  $("seats").innerHTML = ROWS.map(r => `
+    <div class="srow"><b>${r}</b>
+      <div class="half">${[1, 2, 3, 4].map(seat(r)).join("")}</div>
+      <div class="half">${[5, 6, 7, 8].map(seat(r)).join("")}</div>
+    </div>`).join("");
+}
+
+function updateSummary() {
+  const seats = [...selected].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const types = [...new Set(seats.map(c => isVip(c) ? "VIP" : "Стандарт"))];
+  const total = seats.reduce((sum, c) => sum + seatPrice(c), 0);
+  $("s-film").textContent = movie.title;
+  $("s-date").textContent = fmtDate(session.startTime);
+  $("s-time").textContent = fmtTime(session.startTime);
+  $("s-loc").textContent = session.location || "—";
+  $("s-seats").textContent = seats.length ? seats.join(", ") : "—";
+  $("s-type").textContent = types.length ? types.join(", ") : "—";
+  $("s-total").textContent = price(total);
+  $("buy").disabled = !seats.length;
+}
+</script>
+</body>
+</html> 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Показ тіней</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+<div id="header"></div>
+<main>
+  <section class="hero" id="hero"></section>
+  <div id="sections"><div class="wrap"><p class="msg">Завантаження…</p></div></div>
+</main>
+<div id="footer"></div>
+
+<script src="app.js"></script>
+<script>
+header("home"); footer();
+
+(async () => {
+  try {
+    const [movies, sessions] = await Promise.all([api("/movies"), api("/sessions")]);
+    render(movies, sessions);
+  } catch (e) {
+    document.getElementById("hero").remove();
+    showError(document.querySelector("#sections .wrap"), e);
+  }
+})();
+
+function initHero(list) {
+  const el = document.getElementById("hero");
+  if (!list.length) { el.remove(); return; }
+  el.innerHTML = list.map((m, k) => {
+    const bg = m.backdropUrl || m.posterUrl;
+    return `<div class="slide ${k ? "" : "on"}" ${bg ? `style="background-image:url('${esc(bg)}')"` : ""}>
+      <div class="slide-body">
+        <h1>${esc(m.title)}</h1>
+        <p>${esc(m.description)}</p>
+        <div class="meta">${metaHtml(m)}</div>
+        <a class="btn" href="film.html?id=${m.id}">Забронювати квиток</a>
+      </div></div>`;
+  }).join("") + (list.length > 1 ? `<div class="ctrl">
+      <button class="arrow" data-d="-1" aria-label="Попередній">‹</button>
+      <div class="dots">${list.map((_, k) => `<button class="dot ${k ? "" : "on"}" data-i="${k}" aria-label="Слайд ${k + 1}"></button>`).join("")}</div>
+      <button class="arrow" data-d="1" aria-label="Наступний">›</button></div>` : "");
+
+  let i = 0, timer;
+  const slides = el.querySelectorAll(".slide"), dots = el.querySelectorAll(".dot");
+  const go = n => {
+    i = (n + list.length) % list.length;
+    slides.forEach((s, k) => s.classList.toggle("on", k === i));
+    dots.forEach((d, k) => d.classList.toggle("on", k === i));
+  };
+  const auto = () => {
+    clearInterval(timer);
+    if (list.length > 1 && !matchMedia("(prefers-reduced-motion: reduce)").matches)
+      timer = setInterval(() => go(i + 1), 6000);
+  };
+  el.onclick = e => {
+    const a = e.target.closest(".arrow"), d = e.target.closest(".dot");
+    if (a) go(i + Number(a.dataset.d)); else if (d) go(Number(d.dataset.i)); else return;
+    auto();
+  };
+  auto();
+}
+
+const section = (title, list, cls = "") => `
+  <section class="block"><div class="wrap">
+    <div class="shead"><h2>${esc(title)}</h2><a class="btn outline small" href="catalog.html">Переглянути всі</a></div>
+    <div class="railwrap">
+      <button class="rail-arrow l" aria-label="Назад">‹</button>
+      <div class="rail ${cls}">${list.map(m => filmCard(m, cls === "soon")).join("")}</div>
+      <button class="rail-arrow r" aria-label="Далі">›</button>
+    </div>
+    <hr class="sep">
+  </div></section>`;
+
+const promoHtml = m => `
+  <section class="promo" style="background-image:url('${esc(m.backdropUrl)}')"><div class="wrap"><div class="box">
+    <h2>${esc(m.title)}</h2><div class="gen">${esc(m.genre)}</div>
+    <p>${esc(m.description)}</p>
+    <div class="meta">${metaHtml(m)}</div>
+    <a class="btn" href="film.html?id=${m.id}">Забронювати квиток</a>
+  </div></div></section>`;
+
+function render(movies, sessions) {
+  const now = new Date();
+  const released = movies.filter(m => !m.releaseDate || new Date(m.releaseDate) <= now);
+  const soon = movies.filter(m => m.releaseDate && new Date(m.releaseDate) > now)
+                     .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+
+  const withBg = released.filter(m => m.backdropUrl);
+  const heroList = (withBg.length ? withBg : released).slice(0, 6);
+  initHero(heroList);
+
+  // секції за локаціями сеансів
+  const byLoc = new Map();
+  sessions.filter(s => new Date(s.startTime) > now).forEach(s => {
+    const loc = (s.location || "").trim() || "Кінотеатр";
+    if (!byLoc.has(loc)) byLoc.set(loc, new Set());
+    byLoc.get(loc).add(s.movieId);
+  });
+  let blocks = [...byLoc.keys()]
+    .sort((a, b) => (b === "Кінотеатр") - (a === "Кінотеатр"))
+    .map(loc => ({ title: loc, list: released.filter(m => byLoc.get(loc).has(m.id)) }))
+    .filter(b => b.list.length);
+  if (!blocks.length && released.length) blocks = [{ title: "Зараз у прокаті", list: released }];
+
+  const promo = released.filter(m => m.backdropUrl && m !== heroList[0])
+                        .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+
+  const parts = blocks.map(b => section(b.title, b.list));
+  if (promo) parts.splice(Math.min(2, parts.length), 0, promoHtml(promo));
+  if (soon.length) parts.push(section("Скоро у прокаті", soon, "soon"));
+
+  const root = document.getElementById("sections");
+  root.innerHTML = parts.join("") || `<div class="wrap"><p class="msg">Фільмів поки немає.</p></div>`;
+  wireRail(root);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Фільм — Показ тіней</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+<div id="header"></div>
+<main class="wrap" id="content"><p class="msg">Завантаження…</p></main>
+<div id="footer"></div>
+
+<script src="app.js"></script>
+<script>
+header("films"); footer();
+const id = Number(new URLSearchParams(location.search).get("id"));
+const box = document.getElementById("content");
+let rating = 5;
+
+(async () => {
+  try {
+    const [m, sessions] = await Promise.all([api("/movies/" + id), api("/sessions?movieId=" + id)]);
+    document.title = `${m.title} — Показ тіней`;
+
+    const now = new Date();
+    const groups = new Map();
+    sessions.filter(s => new Date(s.startTime) > now).forEach(s => {
+      const k = dayKey(s.startTime) + "|" + (s.location || "") + "|" + s.hall;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(s);
+    });
+    const days = [...groups.values()];
+
+    box.innerHTML = `
+      <div class="film">
+        <div class="poster-big">${posterHtml(m)}</div>
+        <div>
+          <h1>${esc(m.title)}</h1>
+          <div class="metaline">
+            <span class="tag">${esc(m.genre)}</span>
+            <span>${durText(m.durationMinutes)}</span>
+            ${m.rating != null ? `<span class="star">★ ${esc(m.rating)}</span>` : ""}
+          </div>
+          <h3>Опис</h3>
+          <p class="desc">${esc(m.description)}</p>
+          <div class="actions">
+            ${m.trailerUrl ? `<a class="btn" href="${esc(m.trailerUrl)}" target="_blank" rel="noopener">▶ Дивитись трейлер</a>` : ""}
+            <a class="btn outline" href="booking.html?movie=${m.id}">Забронювати квитки</a>
+          </div>
+        </div>
+      </div>
+
+      <section class="block" id="schedule">
+        <h2>Розклад показів</h2>
+        <div class="sched">${days.length ? days.map(g => `
+          <div class="day">
+            <h4>${fmtDateFull(g[0].startTime)}</h4>
+            <div class="where">${esc(g[0].location || "")}${g[0].location && g[0].hall ? " · " : ""}${esc(g[0].hall || "")}</div>
+            <div class="times">${g.map(s => `<a class="chip-time" href="booking.html?session=${s.id}">${fmtTime(s.startTime)}</a>`).join("")}</div>
+          </div>`).join("") : `<p class="msg">Майбутніх сеансів поки немає.</p>`}
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="shead"><h2>Відгуки та оцінки</h2><button class="btn outline small" id="rbtn">Залишити відгук</button></div>
+        <div class="rform" id="rform">
+          <div class="pick" id="pick">${[1, 2, 3, 4, 5].map(n => `<button type="button" aria-label="Оцінка ${n}">★</button>`).join("")}</div>
+          <textarea id="rtext" maxlength="1000" placeholder="Ваші враження від фільму"></textarea>
+          <button class="btn" id="rsend">Надіслати відгук</button>
+        </div>
+        <div class="reviews" id="rlist"></div>
+      </section>`;
+
+    wireReviews();
+    loadReviews();
+  } catch (e) {
+    if (e.status === 404) box.innerHTML = `<p class="msg err">Фільм не знайдено. <a href="catalog.html" style="text-decoration:underline">До каталогу</a></p>`;
+    else showError(box, e);
+  }
+})();
+
+async function loadReviews() {
+  const el = document.getElementById("rlist");
+  try {
+    const list = await api("/reviews?movieId=" + id);
+    el.innerHTML = list.length ? list.map(r => `
+      <div class="review">
+        <div class="rhead">
+          <span class="av">${esc((r.userName || "?").charAt(0).toUpperCase())}</span>
+          <div><div>${esc(r.userName)}</div><div class="stars">${stars(r.rating)} <small>${r.rating}/5</small></div></div>
+        </div>
+        <p>${esc(r.text)}</p>
+      </div>`).join("") : `<p class="msg">Відгуків поки немає. Станьте першим.</p>`;
+  } catch {
+    el.innerHTML = `<p class="msg">Відгуки тимчасово недоступні.</p>`;
+  }
+}
+
+function wireReviews() {
+  document.getElementById("rbtn").onclick = () => {
+    if (!USER_ID) { location.href = "login.html?next=" + encodeURIComponent("film.html?id=" + id); return; }
+    document.getElementById("rform").classList.toggle("open");
+  };
+  const picks = document.querySelectorAll("#pick button");
+  const paint = () => picks.forEach((b, k) => b.classList.toggle("on", k < rating));
+  picks.forEach((b, k) => b.onclick = () => { rating = k + 1; paint(); });
+  paint();
+
+  document.getElementById("rsend").onclick = async e => {
+    const text = document.getElementById("rtext").value.trim();
+    if (text.length < 3) { toast("Напишіть кілька слів про фільм"); return; }
+    e.target.disabled = true;
+    try {
+      await api("/reviews", { method: "POST", body: JSON.stringify({ movieId: id, userId: USER_ID, rating, text }) });
+      document.getElementById("rtext").value = "";
+      document.getElementById("rform").classList.remove("open");
+      toast("Дякуємо за відгук");
+      loadReviews();
+    } catch (err) { toast(err.detail || "Не вдалося надіслати відгук"); }
+    e.target.disabled = false;
+  };
+}
+</script>
+</body>
+</html>
