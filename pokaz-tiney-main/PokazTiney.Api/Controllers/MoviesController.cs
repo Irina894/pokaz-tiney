@@ -25,6 +25,15 @@ public class MoviesController : ControllerBase
             .AsNoTracking()
             .Select(m => new MovieDto
             {
+                Id = m.Id,
+                Title = m.Title,
+                Description = m.Description,
+                Genre = m.Genre,
+                DurationMinutes = m.DurationMinutes,
+                PosterUrl = m.PosterUrl,
+                BackdropUrl = m.BackdropUrl,
+                TrailerUrl = m.TrailerUrl,
+                Rating = m.Rating,
                 ReleaseDate = m.ReleaseDate,
                 Director = m.Director,
                 Cast = m.Cast,
@@ -49,6 +58,15 @@ public class MoviesController : ControllerBase
             .Where(m => m.Id == id)
             .Select(m => new MovieDto
             {
+                Id = m.Id,
+                Title = m.Title,
+                Description = m.Description,
+                Genre = m.Genre,
+                DurationMinutes = m.DurationMinutes,
+                PosterUrl = m.PosterUrl,
+                BackdropUrl = m.BackdropUrl,
+                TrailerUrl = m.TrailerUrl,
+                Rating = m.Rating,
                 ReleaseDate = m.ReleaseDate,
                 Director = m.Director,
                 Cast = m.Cast,
