@@ -10,7 +10,7 @@
 <div id="header"></div>
 <main>
   <section class="hero" id="hero"></section>
-  <div id="sections"><div class="wrap"><p class="msg">Завантаження…</p></div></div>
+  <div id="home"><div class="wrap"><p class="msg">Завантаження…</p></div></div>
 </main>
 <div id="footer"></div>
 
@@ -24,10 +24,11 @@ header("home"); footer();
     render(movies, sessions);
   } catch (e) {
     document.getElementById("hero").remove();
-    showError(document.querySelector("#sections .wrap"), e);
+    showError(document.querySelector("#home .wrap"), e);
   }
 })();
 
+/* ---------- слайдер ---------- */
 function initHero(list) {
   const el = document.getElementById("hero");
   if (!list.length) { el.remove(); return; }
@@ -38,7 +39,12 @@ function initHero(list) {
         <h1>${esc(m.title)}</h1>
         <p>${esc(m.description)}</p>
         <div class="meta">${metaHtml(m)}</div>
-        <a class="btn" href="film.html?id=${m.id}">Забронювати квиток</a>
+        <div class="hbtns">
+          ${m.trailerUrl
+            ? `<a class="btn outline" href="${esc(m.trailerUrl)}" target="_blank" rel="noopener">▶ Трейлер</a>`
+            : `<a class="btn outline" href="film.html?id=${m.id}">Детальніше</a>`}
+          <a class="btn" href="booking.html?movie=${m.id}">Забронювати квиток</a>
+        </div>
       </div></div>`;
   }).join("") + (list.length > 1 ? `<div class="ctrl">
       <button class="arrow" data-d="-1" aria-label="Попередній">‹</button>
@@ -65,24 +71,77 @@ function initHero(list) {
   auto();
 }
 
-const section = (title, list, cls = "") => `
-  <section class="block"><div class="wrap">
-    <div class="shead"><h2>${esc(title)}</h2><a class="btn outline small" href="catalog.html">Переглянути всі</a></div>
-    <div class="railwrap">
-      <button class="rail-arrow l" aria-label="Назад">‹</button>
-      <div class="rail ${cls}">${list.map(m => filmCard(m, cls === "soon")).join("")}</div>
-      <button class="rail-arrow r" aria-label="Далі">›</button>
-    </div>
-    <hr class="sep">
+/* ---------- секції ---------- */
+function todaySection(sessions) {
+  const now = new Date(), today = now.toDateString();
+  let list = sessions.filter(s => new Date(s.startTime) > now && new Date(s.startTime).toDateString() === today);
+  let title = "Сеанси сьогодні";
+  if (!list.length) { list = sessions.filter(s => new Date(s.startTime) > now); title = "Найближчі сеанси"; }
+  list = list.sort((a, b) => new Date(a.startTime) - new Date(b.startTime)).slice(0, 4);
+  if (!list.length) return "";
+  const showDate = title !== "Сеанси сьогодні";
+  return `<section class="block" id="schedule"><div class="wrap">
+    <div class="shead"><h2>${title}</h2><a class="btn teal" href="catalog.html">Увесь розклад</a></div>
+    <div class="today">${list.map(s => `
+      <a class="tcard" href="booking.html?session=${s.id}">
+        <div class="trow"><b class="ttime">${fmtTime(s.startTime)}</b><span class="pill-red">Квитки</span></div>
+        <div class="tsub">${showDate ? fmtDate(s.startTime) + " · " : ""}${esc(s.movieTitle || "Фільм")} · ${esc(s.hall || s.location || "")}</div>
+        <div class="tprice">від ${price(s.price)}</div>
+      </a>`).join("")}</div>
   </div></section>`;
+}
+
+function cinemaSection(released) {
+  const genres = ["Усі", ...new Set(released.flatMap(genresOf))].slice(0, 7);
+  return `<section class="block"><div class="wrap">
+    <div class="shead">
+      <div><h2>Кінотеатр</h2><div class="subh">Зараз у прокаті</div></div>
+      <a class="btn teal" href="catalog.html">Переглянути всі</a>
+    </div>
+    <div class="chips" id="chips">${genres.map((g, i) => `<button class="chip ${i ? "" : "on"}" data-g="${esc(g)}">${esc(g)}</button>`).join("")}</div>
+    <div class="cgrid" id="cgrid"></div>
+  </div></section>`;
+}
+
+function wireChips(released) {
+  const box = document.getElementById("chips"), grid = document.getElementById("cgrid");
+  const draw = g => {
+    const list = (g === "Усі" ? released : released.filter(m => genresOf(m).includes(g))).slice(0, 8);
+    grid.innerHTML = list.length ? list.map(m => cinemaCard(m)).join("") : `<p class="msg">Фільмів цього жанру немає.</p>`;
+  };
+  box.onclick = e => {
+    const b = e.target.closest(".chip");
+    if (!b) return;
+    box.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
+    draw(b.dataset.g);
+  };
+  draw("Усі");
+}
 
 const promoHtml = m => `
-  <section class="promo" style="background-image:url('${esc(m.backdropUrl)}')"><div class="wrap"><div class="box">
-    <h2>${esc(m.title)}</h2><div class="gen">${esc(m.genre)}</div>
+  <section class="promo" ${m.backdropUrl ? `style="background-image:url('${esc(m.backdropUrl)}')"` : ""}><div class="wrap"><div class="box">
+    <h2>${esc(m.title)}</h2>
     <p>${esc(m.description)}</p>
+    <p class="gl"><b>Жанр:</b> ${esc(m.genre)}</p>
     <div class="meta">${metaHtml(m)}</div>
-    <a class="btn" href="film.html?id=${m.id}">Забронювати квиток</a>
+    <a class="btn block-btn" href="booking.html?movie=${m.id}">Забронювати квиток</a>
   </div></div></section>`;
+
+const moreHtml = list => list.length ? `
+  <section class="block"><div class="wrap">
+    <div class="cgrid">${list.map(m => cinemaCard(m)).join("")}</div>
+    <hr class="sep">
+  </div></section>` : "";
+
+const soonHtml = list => `
+  <section class="block" id="soon"><div class="wrap">
+    <div class="shead"><h2>Скоро у прокаті</h2><a class="btn teal" href="catalog.html">Переглянути всі</a></div>
+    <div class="railwrap">
+      <button class="rail-arrow l" aria-label="Назад">‹</button>
+      <div class="rail soon">${list.map(m => filmCard(m, true)).join("")}</div>
+      <button class="rail-arrow r" aria-label="Далі">›</button>
+    </div>
+  </div></section>`;
 
 function render(movies, sessions) {
   const now = new Date();
@@ -94,30 +153,20 @@ function render(movies, sessions) {
   const heroList = (withBg.length ? withBg : released).slice(0, 6);
   initHero(heroList);
 
-  // секції за локаціями сеансів
-  const byLoc = new Map();
-  sessions.filter(s => new Date(s.startTime) > now).forEach(s => {
-    const loc = (s.location || "").trim() || "Кінотеатр";
-    if (!byLoc.has(loc)) byLoc.set(loc, new Set());
-    byLoc.get(loc).add(s.movieId);
-  });
-  let blocks = [...byLoc.keys()]
-    .sort((a, b) => (b === "Кінотеатр") - (a === "Кінотеатр"))
-    .map(loc => ({ title: loc, list: released.filter(m => byLoc.get(loc).has(m.id)) }))
-    .filter(b => b.list.length);
-  if (!blocks.length && released.length) blocks = [{ title: "Зараз у прокаті", list: released }];
+  const promo = released.filter(m => m !== heroList[0])
+    .sort((a, b) => (!!b.backdropUrl - !!a.backdropUrl) || ((b.rating || 0) - (a.rating || 0)))[0];
 
-  const promo = released.filter(m => m.backdropUrl && m !== heroList[0])
-                        .sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+  const parts = [todaySection(sessions)];
+  if (released.length) parts.push(cinemaSection(released));
+  if (promo) parts.push(promoHtml(promo));
+  parts.push(moreHtml(released.slice(8, 12)));
+  if (soon.length) parts.push(soonHtml(soon));
 
-  const parts = blocks.map(b => section(b.title, b.list));
-  if (promo) parts.splice(Math.min(2, parts.length), 0, promoHtml(promo));
-  if (soon.length) parts.push(section("Скоро у прокаті", soon, "soon"));
-
-  const root = document.getElementById("sections");
+  const root = document.getElementById("home");
   root.innerHTML = parts.join("") || `<div class="wrap"><p class="msg">Фільмів поки немає.</p></div>`;
+  if (released.length) wireChips(released);
   wireRail(root);
 }
 </script>
 </body>
-</html>
+</html> 

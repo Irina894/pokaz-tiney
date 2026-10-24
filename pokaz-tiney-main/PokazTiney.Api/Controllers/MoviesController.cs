@@ -25,16 +25,15 @@ public class MoviesController : ControllerBase
             .AsNoTracking()
             .Select(m => new MovieDto
             {
-                Id = m.Id,
-                Title = m.Title,
-                Description = m.Description,
-                Genre = m.Genre,
-                DurationMinutes = m.DurationMinutes,
-                PosterUrl = m.PosterUrl,
-                BackdropUrl = m.BackdropUrl,
-                TrailerUrl = m.TrailerUrl,
-                Rating = m.Rating,
-                ReleaseDate = m.ReleaseDate
+                ReleaseDate = m.ReleaseDate,
+                Director = m.Director,
+                Cast = m.Cast,
+                Language = m.Language,
+                Format = m.Format,
+                AgeRating = m.AgeRating,
+                Country = m.Country,
+                Year = m.Year,
+                Stills = m.Stills
             })
             .ToListAsync(cancellationToken);
 
@@ -50,12 +49,15 @@ public class MoviesController : ControllerBase
             .Where(m => m.Id == id)
             .Select(m => new MovieDto
             {
-                Id = m.Id,
-                Title = m.Title,
-                Description = m.Description,
-                Genre = m.Genre,
-                DurationMinutes = m.DurationMinutes,
-                PosterUrl = m.PosterUrl
+                ReleaseDate = m.ReleaseDate,
+                Director = m.Director,
+                Cast = m.Cast,
+                Language = m.Language,
+                Format = m.Format,
+                AgeRating = m.AgeRating,
+                Country = m.Country,
+                Year = m.Year,
+                Stills = m.Stills
             })
             .FirstOrDefaultAsync(cancellationToken);
 

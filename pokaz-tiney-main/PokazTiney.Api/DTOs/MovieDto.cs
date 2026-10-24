@@ -12,4 +12,12 @@ public class MovieDto
     public string? TrailerUrl { get; set; }
     public double? Rating { get; set; }
     public DateTime? ReleaseDate { get; set; }
+    public string? Director { get; set; }
+    public string? Cast { get; set; }
+    public string? Language { get; set; }
+    public string? Format { get; set; }
+    public string? AgeRating { get; set; }
+    public string? Country { get; set; }
+    public int? Year { get; set; }
+    public string? Stills { get; set; }
 }

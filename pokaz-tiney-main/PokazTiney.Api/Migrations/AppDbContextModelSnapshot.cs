@@ -33,6 +33,10 @@ namespace PokazTiney.Api.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ContactName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -47,6 +51,13 @@ namespace PokazTiney.Api.Migrations
                     b.Property<DateTime>("DesiredDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("EstimatedPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("GuestsCount")
                         .HasColumnType("int");
 
@@ -54,7 +65,17 @@ namespace PokazTiney.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("LocationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("MovieId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -70,18 +91,36 @@ namespace PokazTiney.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AgeRating")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BackdropUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Cast")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Director")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
 
+                    b.Property<string>("Format")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Genre")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Language")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PosterUrl")
@@ -93,12 +132,18 @@ namespace PokazTiney.Api.Migrations
                     b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Stills")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TrailerUrl")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -179,8 +224,29 @@ namespace PokazTiney.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ContactEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Discount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OrderNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("SeatNumber")
                         .IsRequired()
@@ -214,6 +280,12 @@ namespace PokazTiney.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("BirthDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -231,6 +303,9 @@ namespace PokazTiney.Api.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Phone")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Role")

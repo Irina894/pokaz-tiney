@@ -5,96 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Кінотеатр — Показ тіней</title>
   <link rel="stylesheet" href="main.css">
-  <style>
-    .page-head{display:flex;align-items:center;gap:14px;margin:44px 0 26px;flex-wrap:wrap}
-    .page-head a.back{color:var(--red-hover);font-size:2rem;line-height:1;padding:0 4px}
-    .page-head h1{font-size:2.2rem;font-weight:500}
-    .page-head .search{margin-left:auto;position:relative}
-    .page-head input{width:260px;max-width:100%;height:42px;border-radius:8px;border:1px solid var(--line);
-      background:var(--panel2);color:var(--text);font:inherit;padding:0 14px}
-    .page-head input::placeholder{color:var(--muted)}
-
-    .catalog{display:grid;grid-template-columns:repeat(4,1fr);gap:34px 30px;margin-bottom:30px}
-    .film-card{display:block}
-    .film-card .pic{position:relative;aspect-ratio:293/344;border-radius:12px;overflow:hidden;
-      background:linear-gradient(160deg,#2a1230,#101a55);display:flex;align-items:center;justify-content:center;
-      font-size:3rem;font-weight:700;color:var(--muted)}
-    .film-card .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
-    .film-card:hover .pic img{transform:scale(1.03)}
-    .film-card .info{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;
-      padding:8px 22px;background:rgba(30,32,38,.88);font-size:.9rem}
-    .film-card .info span{display:flex;align-items:center;gap:6px}
-    .imdb{background:#f5c518;color:#000;font-weight:800;font-size:.6rem;padding:1px 4px;border-radius:3px}
-    .film-card .name{text-align:center;margin-top:12px;font-size:1.02rem}
-    .film-card:hover .name{color:var(--red-hover)}
-
-    .foot4{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:30px}
-    .foot4 h4{color:var(--text);font-weight:500;margin-bottom:14px;padding-bottom:4px;border-bottom:1px solid var(--red)}
-    .foot4 ul{list-style:none;display:grid;gap:8px}
-    .foot4 a:hover{color:var(--text)}
-    footer.big{background:#0a1252;margin-top:50px;padding:40px 0 26px;color:var(--muted)}
-    footer.big .copy{margin-top:30px;padding-top:20px;border-top:1px solid var(--red);text-align:center;font-size:.9rem}
-
-    @media(max-width:980px){.catalog{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:720px){.catalog{grid-template-columns:repeat(2,1fr);gap:22px 16px}
-      .foot4{grid-template-columns:1fr 1fr}.film-card .info{padding:6px 10px;font-size:.8rem}
-      .page-head .search{margin-left:0;width:100%}.page-head input{width:100%}}
-  </style>
 </head>
 <body>
 <div id="header"></div>
-
 <main class="wrap">
-  
+  <div class="page-head"><a class="back" href="index.html" aria-label="На головну">‹</a><h1 id="ttl">Кінотеатр</h1></div>
   <div class="catalog" id="catalog"><p class="msg">Завантаження…</p></div>
 </main>
-
-<footer class="big">
-  <div class="wrap">
-    <div class="foot4">
-      <div>
-        <div class="logo" style="color:var(--text);margin-bottom:12px">Показ <span>тіней</span></div>
-        <p>Кіно просто неба та в незвичних локаціях.</p>
-      </div>
-      <div><h4>Контакти</h4><ul><li>+38 (0XX) XXX XX XX</li><li>info@pokaz-tinei.ua</li><li>м. Чернівці</li></ul></div>
-      <div><h4>Навігація</h4><ul>
-        <li><a href="catalog.html">Зараз у прокаті</a></li>
-        <li><a href="index.html#sessions">Забронювати квиток</a></li>
-        <li><a href="index.html">Головна сторінка</a></li></ul></div>
-      <div><h4>Соціальні мережі</h4><ul><li>Facebook</li><li>Instagram</li><li>Telegram</li></ul></div>
-    </div>
-    <div class="copy">© Показ тіней. Навчальний проєкт.</div>
-  </div>
-</footer>
+<div id="footer"></div>
 
 <script src="app.js"></script>
 <script>
-header("films");
-let movies = [];
+header("films"); footer();
 
-const dur = min => {
-  const h = Math.floor(min / 60), m = min % 60;
-  return (h ? `${h} год` : "") + (h && m ? " " : "") + (m ? `${m} хв` : "");
-};
+const q = (new URLSearchParams(location.search).get("q") || "").trim().toLowerCase();
+const box = document.getElementById("catalog");
+if (q) document.getElementById("ttl").textContent = "Результати пошуку";
 
-function render(list) {
-  const box = document.getElementById("catalog");
-  box.innerHTML = list.length ? list.map(m => `
-    <a class="film-card" href="film.html?id=${m.id}">
-      <div class="pic">
-        ${m.posterUrl ? `<img src="${esc(m.posterUrl)}" alt="${esc(m.title)}" loading="lazy">` : esc(m.title.charAt(0))}
-        <div class="info">
-          <span>${m.rating != null ? `<b class="imdb">IMDb</b>${esc(m.rating)}` : ""}</span>
-          <span>🕒 ${dur(m.durationMinutes)}</span>
-        </div>
-      </div>
-      <div class="name">${esc(m.title)}</div>
-    </a>`).join("") : `<p class="msg">Нічого не знайдено.</p>`;
-}
-
-   const q = (new URLSearchParams(location.search).get("q") || "").toLowerCase();
-   api("/movies").then(m => { movies = m; render(movies.filter(x => x.title.toLowerCase().includes(q))); })
-     .catch(e => showError(document.getElementById("catalog"), e));
+api("/movies").then(all => {
+  const now = new Date();
+  const base = q ? all : all.filter(m => !m.releaseDate || new Date(m.releaseDate) <= now);
+  const list = base.filter(m => m.title.toLowerCase().includes(q));
+  box.innerHTML = list.length ? list.map(m => filmCard(m, false)).join("") : `<p class="msg">Нічого не знайдено.</p>`;
+}).catch(e => showError(box, e));
 </script>
 </body>
-</html>
+</html> 

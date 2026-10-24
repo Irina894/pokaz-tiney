@@ -2,64 +2,8 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Мої квитки — Показ тіней</title>
-  <link rel="stylesheet" href="main.css">
+  <meta http-equiv="refresh" content="0;url=profile.html">
+  <title>Мої квитки</title>
 </head>
-<body>
-<div id="header"></div>
-<main class="wrap">
-  <h1 style="margin:34px 0 20px">Мої квитки</h1>
-  <div id="list"><p class="msg">Завантаження…</p></div>
-</main>
-<footer><div class="wrap">© Показ тіней. Навчальний проєкт.</div></footer>
-
-<script src="app.js"></script>
-<script>
-header("");
-if (!USER_ID) location.replace("login.html?next=tickets.html");
-const box = document.getElementById("list");
-
-async function load() {
-  try {
-    const [tickets, sessions, movies] = await Promise.all([api("/tickets"), api("/sessions"), api("/movies")]);
-    const mine = tickets.filter(t => t.userId === undefined || t.userId === USER_ID)
-                        .sort((a, b) => b.id - a.id);
-    if (!mine.length) {
-      box.innerHTML = `<p class="msg">Квитків поки немає. <a href="index.html" style="color:var(--red-hover)">Обрати фільм</a></p>`;
-      return;
-    }
-    box.innerHTML = mine.map(t => {
-      const s = sessions.find(x => x.id === t.sessionId);
-      const m = movies.find(x => x.id === s?.movieId);
-      const st = ticketStatus(t.status);
-      return `<div class="ticket">
-        <div>
-          <h3>${esc(t.movieTitle || m?.title || "Квиток №" + t.id)}</h3>
-          <div class="sub" style="color:var(--muted);font-size:.9rem">
-            ${s ? `${fmtDate(s.startTime)}, ${fmtTime(s.startTime)} · ${esc(s.hall)} · ` : ""}місце ${esc(t.seatNumber)}
-          </div>
-        </div>
-        <div style="display:flex;gap:12px;align-items:center">
-          <span class="badge ${st.cls}">${st.text}</span>
-          ${st.cls === "cancelled" ? "" : `<button class="btn ghost small" data-cancel="${t.id}">Скасувати</button>`}
-        </div>
-      </div>`;
-    }).join("");
-  } catch (e) { showError(box, e); }
-}
-
-box.onclick = async e => {
-  const b = e.target.closest("[data-cancel]");
-  if (!b || !confirm("Скасувати цей квиток?")) return;
-  try {
-    await api("/tickets/" + b.dataset.cancel, { method: "DELETE" });
-    toast("Квиток скасовано");
-    load();
-  } catch (err) { toast("Не вдалося скасувати: " + err.message); }
-};
-
-load();
-</script>
-</body>
+<body><a href="profile.html">Перейти до профілю</a></body>
 </html>

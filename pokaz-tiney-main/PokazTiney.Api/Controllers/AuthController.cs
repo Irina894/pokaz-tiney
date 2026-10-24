@@ -6,8 +6,24 @@ using PokazTiney.Api.Models;
 
 namespace PokazTiney.Api.Controllers;
 
-public record RegisterRequest(string Name, string Email, string Password);
+public record RegisterRequest(string Name, string Email, string Password, string? Phone);
 public record LoginRequest(string Email, string Password);
+
+public static class UserShape
+{
+    public static object From(User u) => new
+    {
+        id = u.Id,
+        name = (u.FirstName + " " + u.LastName).Trim(),
+        firstName = u.FirstName,
+        lastName = u.LastName,
+        email = u.Email,
+        phone = u.Phone,
+        birthDate = u.BirthDate,
+        avatarUrl = u.AvatarUrl,
+        role = u.Role.ToString()
+    };
+}
 
 [ApiController]
 [Route("api/[controller]")]
@@ -28,6 +44,7 @@ public class AuthController : ControllerBase
         var name = dto.Name?.Trim() ?? "";
         var email = dto.Email?.Trim().ToLowerInvariant() ?? "";
         var password = dto.Password ?? "";
+        var phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
 
         if (name.Length < 2)
             return BadRequest("Введіть ім'я (мінімум 2 символи).");
@@ -36,14 +53,32 @@ public class AuthController : ControllerBase
         if (password.Length < 6)
             return BadRequest("Пароль має містити щонайменше 6 символів.");
 
-        if (await _context.Users.AnyAsync(u => u.Email == email, cancellationToken))
+        var parts = name.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var first = parts[0];
+        var last = parts.Length > 1 ? parts[1] : "";
+
+        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+        if (existing is not null && existing.PasswordHash != "")
             return Conflict("Користувач з таким email уже існує.");
+
+        if (existing is not null)
+        {
+            // гостьовий обліковий запис (квитки без реєстрації) перетворюється на повноцінний
+            existing.FirstName = first;
+            existing.LastName = last;
+            existing.Phone = phone ?? existing.Phone;
+            existing.PasswordHash = _hasher.HashPassword(existing, password);
+            await _context.SaveChangesAsync(cancellationToken);
+            return StatusCode(201, UserShape.From(existing));
+        }
 
         var user = new User
         {
-            FirstName = name,
-            LastName = "",
+            FirstName = first,
+            LastName = last,
             Email = email,
+            Phone = phone,
             Role = UserRole.Viewer
         };
         user.PasswordHash = _hasher.HashPassword(user, password);
@@ -51,7 +86,7 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return StatusCode(201, ToResponse(user));
+        return StatusCode(201, UserShape.From(user));
     }
 
     // POST: api/auth/login
@@ -73,18 +108,9 @@ public class AuthController : ControllerBase
         }
         catch (FormatException)
         {
-            // хеш не у форматі PasswordHasher (наприклад, тестовий користувач із SQL)
             return Unauthorized("Невірний email або пароль.");
         }
 
-        return Ok(ToResponse(user));
+        return Ok(UserShape.From(user));
     }
-
-    private static object ToResponse(User u) => new
-    {
-        id = u.Id,
-        name = (u.FirstName + " " + u.LastName).Trim(),
-        email = u.Email,
-        role = u.Role.ToString()
-    };
 }

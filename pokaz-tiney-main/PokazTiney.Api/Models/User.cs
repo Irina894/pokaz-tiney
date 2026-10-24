@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-
 namespace PokazTiney.Api.Models;
 
 public enum UserRole
@@ -18,6 +16,10 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.Viewer;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public string? Phone { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public string? AvatarUrl { get; set; }
 
     public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
 }

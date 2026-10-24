@@ -1,5 +1,3 @@
-using static System.Collections.Specialized.BitVector32;
-
 namespace PokazTiney.Api.Models;
 
 public class Movie
@@ -14,6 +12,15 @@ public class Movie
     public string? TrailerUrl { get; set; }
     public double? Rating { get; set; }
     public DateTime? ReleaseDate { get; set; }
+
+    public string? Director { get; set; }
+    public string? Cast { get; set; }
+    public string? Language { get; set; }
+    public string? Format { get; set; }
+    public string? AgeRating { get; set; }
+    public string? Country { get; set; }
+    public int? Year { get; set; }
+    public string? Stills { get; set; }   // адреси кадрів через «;»
 
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
