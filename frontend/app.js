@@ -1,4 +1,5 @@
-const API = "http://localhost:5289/api";
+// Адресу API можна змінити без правки коду: window.POKAZ_API_URL (у config.js) або localStorage.apiUrl
+const API = window.POKAZ_API_URL || localStorage.getItem("apiUrl") || "http://localhost:5289/api";
 
 // ---------- користувач ----------
 function currentUser() {
@@ -14,10 +15,18 @@ const USER_ID = USER ? USER.id : null;
 
 // ---------- запити ----------
 async function api(path, options) {
+  const headers = {};
+  if (options && options.body) headers["Content-Type"] = "application/json";
+  if (USER && USER.token) headers["Authorization"] = "Bearer " + USER.token;
   const res = await fetch(API + path, {
     ...options,
-    headers: options && options.body ? { "Content-Type": "application/json" } : undefined,
+    headers: Object.keys(headers).length ? headers : undefined,
   });
+  // токен прострочений або недійсний: виходимо з акаунта (крім помилок входу/реєстрації)
+  if (res.status === 401 && USER && USER.token && !path.startsWith("/auth")) {
+    localStorage.removeItem("user"); sessionStorage.removeItem("user");
+    location.href = "login.html";
+  }
   if (!res.ok) {
     let detail = "";
     try { detail = (await res.text()).slice(0, 200); } catch {}

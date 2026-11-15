@@ -12,6 +12,7 @@
 <div id="footer"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 header("profile"); footer();
@@ -147,7 +148,7 @@ async function save() {
   try {
     me = await api("/users/" + USER_ID, { method: "PUT", body: JSON.stringify(body) });
     avatar = undefined;
-    (localStorage.getItem("user") ? localStorage : sessionStorage).setItem("user", JSON.stringify(me));
+    (localStorage.getItem("user") ? localStorage : sessionStorage).setItem("user", JSON.stringify({ ...me, token: USER && USER.token }));
     document.querySelector(".phead h1").textContent = me.name;
     fillForm();
     toast("Профіль збережено");

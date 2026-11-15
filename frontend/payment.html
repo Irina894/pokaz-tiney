@@ -11,6 +11,7 @@
 <main class="wrap" id="content"><p class="msg">Завантаження…</p></main>
 <div id="footer"></div>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 header("films"); footer();
@@ -75,7 +76,7 @@ function draw() {
           </div>
         </div>
         <div class="rows" id="rows"></div>
-        <div class="promo-row">
+        <div class="promo-row" style="display:none"> <!-- промокоди: Release 2 (див. CR-001), увімкнути разом із Features:PromoCodes -->
           <input id="promo" placeholder="Промокод" aria-label="Промокод">
           <button class="btn dark" id="apply">Застосувати</button>
         </div>

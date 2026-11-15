@@ -1,4 +1,18 @@
-# Показ Тіней: база даних
+# Показ Тіней
+
+Веб-платформа кінотеатру: продаж квитків на сеанси та заявки на мобільні/корпоративні кінопокази.
+
+## Структура репозиторію
+
+| Папка | Вміст |
+|---|---|
+| `PokazTiney.Api/` | backend: ASP.NET Core Web API (.NET 10), EF Core, SQL Server |
+| `PokazTiney.Tests/` | тести xUnit (модульні й інтеграційні) |
+| `frontend/` | сайт: HTML, CSS, JavaScript (Fetch API) |
+| `database/` | SQL-скрипти бази (див. нижче) |
+| `.github/workflows/` | CI: збірка й тести на кожен Pull Request |
+
+## База даних
 
 Microsoft SQL Server. Тут усе, що потрібно, щоб розгорнути базу `PokazTiney` з тестовими даними на новому комп'ютері.
 
@@ -127,6 +141,28 @@ foreach ($f in "01_schema","02_seed","03_generate_sessions") {
 }
 ```
 
+## Автентифікація (JWT) і ролі
+
+API видає JWT при `POST /api/auth/login` та `/api/auth/register` (поле `token` у відповіді). Фронтенд зберігає його разом із користувачем і надсилає заголовок `Authorization: Bearer <token>`.
+
+Ключ підпису читається з `Jwt:Key` (мінімум 32 символи). У режимі Development використовується ключ із `appsettings.Development.json`, для іншого середовища задайте свій:
+
+```powershell
+cd PokazTiney.Api
+dotnet user-secrets set "Jwt:Key" "<довгий випадковий рядок, мінімум 32 символи>"
+```
+
+| Дія | Хто має доступ |
+|---|---|
+| Перегляд фільмів, сеансів, зайнятих місць; створення замовлення й заявки | усі, включно з гостями |
+| Створення, зміна, видалення фільмів і сеансів | Admin, Manager |
+| Перегляд усіх заявок і зміна їхнього статусу (`GET /api/corporaterequests/all`, `POST /api/corporaterequests/{id}/status`) | Admin, Manager |
+| Свій профіль, свої замовлення й заявки, відгуки | авторизований користувач |
+
+Ідентифікатор користувача завжди береться з токена, а не з тіла запиту. Дозволені адреси фронтенду для CORS задаються в `Cors:Origins` (`appsettings.json`).
+
+Промокоди вимкнені (`Features:PromoCodes = false`): вони заплановані на Release 2 (журнал змін, CR-001). Щоб увімкнути, змініть прапорець і приберіть `style="display:none"` у `frontend/payment.html`.
+
 ## Підключення API до бази
 
 Рядок підключення читається з параметра `ConnectionStrings:Default`. **Не зберігайте пароль у репозиторії.** Найпростіше задати рядок через user-secrets:
@@ -165,7 +201,7 @@ SELECT COUNT(*) AS Reviews  FROM dbo.Reviews;    -- 7
 
 ## Фронтенд
 
-Постери кладуться в `frontend/images/` (імена файлів збігаються з `Movies.PosterUrl`, наприклад `images/oppenheimer.jpg`). Сайт відкривайте через Live Server з папки `frontend`. Адреса API задається константою `API` на початку `frontend/app.js`.
+Постери кладуться в `frontend/images/` (імена файлів збігаються з `Movies.PosterUrl`, наприклад `images/oppenheimer.jpg`). Сайт відкривайте через Live Server з папки `frontend`. Адреса API задається в `frontend/config.js` (`window.POKAZ_API_URL`).
 
 ## Облікові записи
 
@@ -200,3 +236,18 @@ DROP DATABASE PokazTiney;
 | Сайт показує «Не вдалося завантажити дані» | API не запущено, або порт у `frontend/app.js` не збігається з `launchSettings.json` |
 | На сайті порожній розклад | розклад застарів: виконайте `03_generate_sessions.sql` |
 | Сертифікат SQL Server не довіряється | додайте `TrustServerCertificate=True` у рядок підключення, а в `sqlcmd` ключ `-C` |
+
+## Тести і CI
+
+```powershell
+dotnet test PokazTiney.slnx
+```
+
+Модульні тести запускаються без бази. Інтеграційний тест `ConcurrentBookingTests` (100 паралельних запитів на одне місце, успішний рівно один, NFR-PERF-5) виконується, лише якщо задано окрему порожню базу:
+
+```powershell
+$env:TEST_CONNECTION_STRING = "Server=.\SQLEXPRESS;Database=PokazTineyTests;Trusted_Connection=True;TrustServerCertificate=True"
+dotnet test PokazTiney.slnx
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) збирає проєкт і запускає всі тести (із SQL Server у контейнері) на кожен Pull Request у `main` і `dev`.
