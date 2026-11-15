@@ -6,6 +6,7 @@
    ============================================================= */
 USE PokazTiney;
 SET NOCOUNT ON;
+SET QUOTED_IDENTIFIER ON;   -- потрібно для фільтрованого індексу на Tickets (інакше DELETE/INSERT дає помилку 1934)
 
 DECLARE @today DATETIME2 = CAST(CAST(SYSDATETIME() AS DATE) AS DATETIME2);
 DECLARE @days  INT = 7;

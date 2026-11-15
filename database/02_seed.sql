@@ -5,6 +5,8 @@
    ============================================================= */
 USE PokazTiney;
 SET NOCOUNT ON;
+SET QUOTED_IDENTIFIER ON;
+SET XACT_ABORT ON;
 
 IF EXISTS (SELECT 1 FROM dbo.Movies)
 BEGIN
@@ -12,11 +14,14 @@ BEGIN
     RETURN;
 END;
 
+BEGIN TRANSACTION;
+
 /* ---------- демо-глядачі (автори відгуків, без пароля, увійти під ними не можна) ---------- */
-INSERT INTO dbo.Users (FirstName, LastName, Email, PasswordHash, [Role]) VALUES
-(N'Олексій', N'К.', N'oleksiy.k@example.com', N'', 0),
-(N'Марія',   N'С.', N'maria.s@example.com',   N'', 0),
-(N'Ірина',   N'П.', N'iryna.p@example.com',   N'', 0);
+/* CreatedAt задається явно: у базі, створеній EF-міграціями, значення за замовчуванням немає */
+INSERT INTO dbo.Users (FirstName, LastName, Email, PasswordHash, [Role], CreatedAt) VALUES
+(N'Олексій', N'К.', N'oleksiy.k@example.com', N'', 0, SYSUTCDATETIME()),
+(N'Марія',   N'С.', N'maria.s@example.com',   N'', 0, SYSUTCDATETIME()),
+(N'Ірина',   N'П.', N'iryna.p@example.com',   N'', 0, SYSUTCDATETIME());
 
 /* ---------- фільми ---------- */
 INSERT INTO dbo.Movies (Title, [Description], Genre, DurationMinutes, PosterUrl, Rating, ReleaseDate,
@@ -46,8 +51,8 @@ VALUES
 (N'Вартові Різдва', N'Різдвяна пригода: легендарні вартові зимових свят у пошуках дива, яке має здійснити бажання маленької Віри.', N'Комедія, Пригоди', 98, N'images/vartovi-rizdva.jpg', 8.3, DATEADD(DAY, 110, SYSDATETIME()), NULL, NULL, N'Українська', N'2D', N'6+', N'Україна', 2026);
 
 /* ---------- відгуки ---------- */
-INSERT INTO dbo.Reviews (MovieId, UserId, Rating, [Text])
-SELECT m.Id, u.Id, v.rating, v.txt
+INSERT INTO dbo.Reviews (MovieId, UserId, Rating, [Text], CreatedAt)
+SELECT m.Id, u.Id, v.rating, v.txt, SYSUTCDATETIME()
 FROM (VALUES
   (N'Довженко',   N'oleksiy.k@example.com', 5, N'Чудовий фільм! Сюжет захоплює з першої хвилини і не відпускає до самого кінця.'),
   (N'Довженко',   N'maria.s@example.com',   4, N'Гарна робота акторів та режисера. Рекомендую до перегляду!'),
@@ -59,6 +64,8 @@ FROM (VALUES
 ) v(title, email, rating, txt)
 JOIN dbo.Movies m ON m.Title = v.title
 JOIN dbo.Users  u ON u.Email = v.email;
+
+COMMIT TRANSACTION;
 
 SELECT (SELECT COUNT(*) FROM dbo.Movies)  AS Movies,
        (SELECT COUNT(*) FROM dbo.Users)   AS Users,
